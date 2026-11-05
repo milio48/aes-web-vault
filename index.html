@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="id">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AES-GCM Encryptor</title>
+    <title>AES Web Vault</title>
     <style>
         :root {
             --bg: #f9fafb;
@@ -85,26 +85,26 @@
 <body>
 
     <div class="container">
-        <h2>🔒 AES-GCM Encryptor / Decryptor</h2>
+        <h2>🔒 AES-GCM Web Vault</h2>
         
         <div class="form-group">
             <label for="password">Password / Secret Key</label>
-            <input type="password" id="password" placeholder="Masukkan password...">
+            <input type="password" id="password" placeholder="Enter your secret password...">
         </div>
 
         <div class="form-group">
-            <label for="inputData">Input Data (Plain Text / Base64 Encrypted Text)</label>
-            <textarea id="inputData" placeholder="Masukkan teks rahasia atau teks yang sudah dienkripsi di sini..."></textarea>
+            <label for="inputData">Input Data (Plaintext or Base64 Ciphertext)</label>
+            <textarea id="inputData" placeholder="Enter your secret text or an existing encrypted Base64 string here..."></textarea>
         </div>
 
         <div class="button-group">
-            <button class="btn-encrypt" id="btnEncrypt">Enkripsi ➔</button>
-            <button class="btn-decrypt" id="btnDecrypt">Dekripsi ➔</button>
+            <button class="btn-encrypt" id="btnEncrypt">Encrypt ➔</button>
+            <button class="btn-decrypt" id="btnDecrypt">Decrypt ➔</button>
         </div>
 
         <div class="form-group output-wrapper">
             <label for="outputData">Output Result</label>
-            <textarea id="outputData" readonly placeholder="Hasil akan muncul di sini..."></textarea>
+            <textarea id="outputData" readonly placeholder="Result will appear here..."></textarea>
         </div>
     </div>
 
@@ -160,38 +160,38 @@
 
                 return new TextDecoder().decode(decrypted);
             } catch (e) {
-                throw new Error("Password salah atau format data rusak!");
+                throw new Error("Invalid password or corrupted data format!");
             }
         }
 
         // Event Listeners
         btnEncrypt.addEventListener('click', async () => {
             if (!elPass.value || !elInput.value) {
-                alert("Password dan Input tidak boleh kosong!");
+                alert("Password and Input fields cannot be empty!");
                 return;
             }
-            btnEncrypt.textContent = "Proses...";
+            btnEncrypt.textContent = "Processing...";
             try {
                 elOutput.value = await encrypt(elPass.value, elInput.value);
             } catch (err) {
                 elOutput.value = "Error: " + err.message;
             } finally {
-                btnEncrypt.textContent = "Enkripsi ➔";
+                btnEncrypt.textContent = "Encrypt ➔";
             }
         });
 
         btnDecrypt.addEventListener('click', async () => {
             if (!elPass.value || !elInput.value) {
-                alert("Password dan Input tidak boleh kosong!");
+                alert("Password and Input fields cannot be empty!");
                 return;
             }
-            btnDecrypt.textContent = "Proses...";
+            btnDecrypt.textContent = "Processing...";
             try {
                 elOutput.value = await decrypt(elPass.value, elInput.value.trim());
             } catch (err) {
                 elOutput.value = "Error: " + err.message;
             } finally {
-                btnDecrypt.textContent = "Dekripsi ➔";
+                btnDecrypt.textContent = "Decrypt ➔";
             }
         });
     </script>
