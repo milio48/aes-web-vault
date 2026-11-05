@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AES-GCM Encryptor</title>
+    <style>
+        :root {
+            --bg: #f9fafb;
+            --surface: #ffffff;
+            --border: #e5e7eb;
+            --text: #1f2937;
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --danger: #dc2626;
+            --danger-hover: #b91c1c;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            background-color: var(--surface);
+            padding: 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 600px;
+        }
+
+        h2 { margin-top: 0; font-size: 1.25rem; border-bottom: 1px solid var(--border); padding-bottom: 10px; }
+
+        .form-group { margin-bottom: 16px; }
+        
+        label { display: block; font-weight: 500; margin-bottom: 6px; font-size: 0.9rem; }
+        
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            outline: none;
+        }
+        
+        input:focus, textarea:focus { border-color: var(--primary); }
+        
+        textarea { height: 120px; resize: vertical; }
+
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        button {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            color: white;
+            transition: background 0.2s;
+        }
+
+        .btn-encrypt { background-color: var(--primary); }
+        .btn-encrypt:hover { background-color: var(--primary-hover); }
+        
+        .btn-decrypt { background-color: var(--danger); }
+        .btn-decrypt:hover { background-color: var(--danger-hover); }
+
+        .output-wrapper { position: relative; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h2>🔒 AES-GCM Encryptor / Decryptor</h2>
+        
+        <div class="form-group">
+            <label for="password">Password / Secret Key</label>
+            <input type="password" id="password" placeholder="Masukkan password...">
+        </div>
+
+        <div class="form-group">
+            <label for="inputData">Input Data (Plain Text / Base64 Encrypted Text)</label>
+            <textarea id="inputData" placeholder="Masukkan teks rahasia atau teks yang sudah dienkripsi di sini..."></textarea>
+        </div>
+
+        <div class="button-group">
+            <button class="btn-encrypt" id="btnEncrypt">Enkripsi ➔</button>
+            <button class="btn-decrypt" id="btnDecrypt">Dekripsi ➔</button>
+        </div>
+
+        <div class="form-group output-wrapper">
+            <label for="outputData">Output Result</label>
+            <textarea id="outputData" readonly placeholder="Hasil akan muncul di sini..."></textarea>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const elPass = document.getElementById('password');
+        const elInput = document.getElementById('inputData');
+        const elOutput = document.getElementById('outputData');
+        const btnEncrypt = document.getElementById('btnEncrypt');
+        const btnDecrypt = document.getElementById('btnDecrypt');
+
+        // Core Crypto Functions (Native Web Crypto API)
+        async function getDerivedKey(password, salt) {
+            const enc = new TextEncoder();
+            const keyMaterial = await crypto.subtle.importKey(
+                "raw", enc.encode(password), { name: "PBKDF2" }, false, ["deriveBits", "deriveKey"]
+            );
+            return crypto.subtle.deriveKey(
+                { name: "PBKDF2", salt: salt, iterations: 100000, hash: "SHA-256" },
+                keyMaterial, { name: "AES-GCM", length: 256 }, true, ["encrypt", "decrypt"]
+            );
+        }
+
+        async function encrypt(password, data) {
+            const enc = new TextEncoder();
+            const salt = crypto.getRandomValues(new Uint8Array(16));
+            const iv = crypto.getRandomValues(new Uint8Array(12)); 
+            
+            const key = await getDerivedKey(password, salt);
+            const ciphertext = await crypto.subtle.encrypt(
+                { name: "AES-GCM", iv: iv }, key, enc.encode(data)
+            );
+
+            const combined = new Uint8Array(salt.length + iv.length + ciphertext.byteLength);
+            combined.set(salt, 0);
+            combined.set(iv, salt.length);
+            combined.set(new Uint8Array(ciphertext), salt.length + iv.length);
+
+            return btoa(String.fromCharCode(...combined));
+        }
+
+        async function decrypt(password, base64Data) {
+            try {
+                const combined = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+                const salt = combined.slice(0, 16);
+                const iv = combined.slice(16, 28);
+                const ciphertext = combined.slice(28);
+
+                const key = await getDerivedKey(password, salt);
+                const decrypted = await crypto.subtle.decrypt(
+                    { name: "AES-GCM", iv: iv }, key, ciphertext
+                );
+
+                return new TextDecoder().decode(decrypted);
+            } catch (e) {
+                throw new Error("Password salah atau format data rusak!");
+            }
+        }
+
+        // Event Listeners
+        btnEncrypt.addEventListener('click', async () => {
+            if (!elPass.value || !elInput.value) {
+                alert("Password dan Input tidak boleh kosong!");
+                return;
+            }
+            btnEncrypt.textContent = "Proses...";
+            try {
+                elOutput.value = await encrypt(elPass.value, elInput.value);
+            } catch (err) {
+                elOutput.value = "Error: " + err.message;
+            } finally {
+                btnEncrypt.textContent = "Enkripsi ➔";
+            }
+        });
+
+        btnDecrypt.addEventListener('click', async () => {
+            if (!elPass.value || !elInput.value) {
+                alert("Password dan Input tidak boleh kosong!");
+                return;
+            }
+            btnDecrypt.textContent = "Proses...";
+            try {
+                elOutput.value = await decrypt(elPass.value, elInput.value.trim());
+            } catch (err) {
+                elOutput.value = "Error: " + err.message;
+            } finally {
+                btnDecrypt.textContent = "Dekripsi ➔";
+            }
+        });
+    </script>
+</body>
+</html>
